@@ -1,0 +1,102 @@
+// netlify/functions/submit.js
+
+const mongoose = require("mongoose");
+const nodemailer = require("nodemailer");
+const path = require("path");
+const Submission = require("../../models/Submission"); // Adjust the path accordingly
+const formidable = require("formidable"); //
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// Connect to MongoDB only once
+let isDbConnected = false;
+async function connectDB() {
+  if (mongoose.connection.readyState === 1 || isDbConnected) {
+    return;
+  }
+  await mongoose.connect(process.env.MONGO_URI);
+  isDbConnected = true;
+}
+
+exports.handler = async (event, context) => {
+  try {
+    // Use Formidable to parse the form data, including files
+    const form = new formidable.IncomingForm();
+    form.parse(event.body, async (err, fields, files) => {
+      if (err) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: "File parsing failed" }),
+        };
+      }
+
+      // Connect to MongoDB
+      await connectDB();
+
+      const { name, email } = fields; // Assuming form fields are passed as strings
+      const pdfFile = files.pdf[0]; // Formidable parses the file upload as an array in files.pdf
+
+      if (!pdfFile) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: "No PDF file uploaded" }),
+        };
+      }
+
+      // Save to database
+      const submission = await Submission.create({ name, email });
+      console.log("Data saved to database:", submission);
+
+      // Prepare email HTML
+      const emailHTML = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Great news!</h2>
+          <p>Your ROI report is ready! It’s attached as a PDF, and shares your online insights to help you make smarter decisions about your Agile toolkit.</p>
+          <ul>
+            <li>✅ Actionable insights tailored to your team</li>
+            <li>📊 Key metrics that impact your bottom line</li>
+            <li>🚀 Opportunities to optimize your workflow</li>
+          </ul>
+        </div>
+      `;
+
+      // Send the email with the PDF attached
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Your Easy Agile ROI Report is Here — Unlock the Insights",
+        html: emailHTML,
+        attachments: [
+          {
+            filename: "roi.pdf",
+            path: pdfFile.filepath, // Use the file path provided by Formidable
+            contentType: "application/pdf",
+          },
+          {
+            filename: "banner.png",
+            path: path.resolve(__dirname, "public/assets/EA_ROI_EDM_Header.png"),
+            cid: "banner",
+          },
+        ],
+      });
+
+      // Return success response
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ message: "Success" }),
+      };
+    });
+  } catch (error) {
+    console.error("Submission Error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Submission failed" }),
+    };
+  }
+};
