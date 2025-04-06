@@ -1,1 +1,38 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Web site created using create-react-app"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>React App</title><script defer="defer" src="/static/js/main.b1af20de.js"></script><link href="/static/css/main.15560d5e.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Web site created using create-react-app"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>React App</title><script defer="defer" src="/static/js/main.b1af20de.js"></script> <script>
+      // This is the function that runs when the form is submitted
+      async function submitForm(name, email, file) {
+        const formData = new FormData();
+        formData.append("name", name);  // Add name to form data
+        formData.append("email", email);  // Add email to form data
+        formData.append("pdf", file);  // Add PDF file to form data
+
+        // Send the data to the Netlify serverless function
+        const response = await fetch("/.netlify/functions/submit", {
+          method: "POST",  // We are making a POST request
+          body: formData,  // Send the form data as the body of the request
+        });
+
+        const result = await response.json();  // Get the response from the serverless function
+        console.log(result.message);  // Log the success or error message to the console
+        alert(result.message);  // Show a pop-up with the result message
+      }
+
+      // Handle form submission
+      document.getElementById("roiForm").addEventListener("submit", async (e) => {
+        e.preventDefault();  // Prevent the form from reloading the page
+
+        // Get the form field values
+        const name = document.getElementById("name").value;
+        const email = document.getElementById("email").value;
+        const file = document.getElementById("pdf").files[0];  // Get the PDF file from the file input
+
+        // Make sure a file was uploaded
+        if (!file) {
+          alert("Please upload a PDF.");
+          return;
+        }
+
+        // Call the function to send the data to Netlify
+        await submitForm(name, email, file);
+      });
+    </script><link href="/static/css/main.15560d5e.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
